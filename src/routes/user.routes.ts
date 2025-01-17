@@ -10,4 +10,8 @@ router.patch("/:id", UserController.update);
 router.delete("/:id", UserController.delete);
 
 
+// login 
+router.post("/login", UserController.login);
+
+
 export default router;

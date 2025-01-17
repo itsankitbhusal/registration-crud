@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { User } from "../models/user.model";
-import { errorResponse, successResponse } from "../utils";
+import {
+  errorResponse,
+  signAccessToken,
+  signRefreshToken,
+  successResponse,
+} from "../utils";
 import { IUser } from "../models/user.interface";
 
 export class UserController {
@@ -147,6 +152,47 @@ export class UserController {
         );
       } else {
         res.status(404).send(errorResponse("User not found"));
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        return res.status(500).send(errorResponse(err.message));
+      }
+      return res.status(500).send(errorResponse("Something went wrong!"));
+    }
+  }
+
+  static async login(req: Request, res: Response): Promise<any> {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).send(errorResponse("All fields are required"));
+      }
+
+      const foundUser = await User.findOne({ email: email });
+
+      if (foundUser) {
+        const isPasswordMatched = await bcrypt.compare(
+          password,
+          foundUser?.password
+        );
+
+        if (!isPasswordMatched) {
+          return res.status(401).send(errorResponse("Password didn't match!"));
+        }
+        const refreshToken = signRefreshToken(email);
+        const accessToken = signAccessToken(foundUser._id.toString(), email);
+
+        return res.status(200).send(
+          successResponse({
+            _id: foundUser?._id,
+            firstName: foundUser?.firstName,
+            lastName: foundUser?.lastName,
+            email: foundUser?.email,
+            accessToken,
+            refreshToken,
+          })
+        );
       }
     } catch (err) {
       if (err instanceof Error) {
