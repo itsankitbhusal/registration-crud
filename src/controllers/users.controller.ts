@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { User } from "../models/user.model";
 import {
@@ -270,7 +271,7 @@ export class UserController {
     }
 
     try {
-      const decoded:any = jwt.verify(token, jwtSecret);
+      const decoded: any = jwt.verify(token, jwtSecret);
 
       if (!decoded) {
         return res.status(401).send(errorResponse("Invalid token"));
