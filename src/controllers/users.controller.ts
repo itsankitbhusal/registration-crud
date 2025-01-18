@@ -9,7 +9,7 @@ import {
   successResponse,
 } from "../utils";
 import { IUser } from "../models/user.interface";
-
+import jwt from "jsonwebtoken";
 export class UserController {
   static async register(req: Request, res: Response): Promise<any> {
     try {
@@ -219,7 +219,7 @@ export class UserController {
     user.resetTokenExpires = expires.toString();
     await user.save();
 
-    const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}&email=${email}`;
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password.html?token=${resetToken}&email=${email}`;
     await sendEmail(
       email,
       "Password Reset",
@@ -255,5 +255,46 @@ export class UserController {
     await user.save();
 
     res.status(200).send(successResponse("Password reset successful"));
+  }
+
+  static async refreshToken(req: Request, res: Response): Promise<any> {
+    const token = req.headers["authorization"]?.split(" ")[1];
+
+    const jwtSecret = process.env.JWT_SECRET_REFRESH;
+
+    if (!token) {
+      return res.status(400).send(errorResponse("Token not provided"));
+    }
+    if (!jwtSecret) {
+      return res.status(400).send(errorResponse("Jwt secret not found"));
+    }
+
+    try {
+      const decoded:any = jwt.verify(token, jwtSecret);
+
+      if (!decoded) {
+        return res.status(401).send(errorResponse("Invalid token"));
+      }
+
+      const email = decoded?.email || "";
+
+      const foundUser = await User.findOne({ email });
+
+      if (!foundUser) {
+        return res.status(404).send(errorResponse("User not found"));
+      }
+
+      const accessToken = signAccessToken(
+        foundUser._id.toString(),
+        foundUser.email
+      );
+
+      return res.status(200).send(successResponse({ accessToken }));
+    } catch (err) {
+      if (err instanceof Error) {
+        return res.status(500).send(errorResponse(err.message));
+      }
+      return res.status(500).send(errorResponse("Failed to refresh token!"));
+    }
   }
 }
