@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { User } from "../models/user.model";
 import {
   errorResponse,
+  sendEmail,
   signAccessToken,
   signRefreshToken,
   successResponse,
@@ -200,5 +201,59 @@ export class UserController {
       }
       return res.status(500).send(errorResponse("Something went wrong!"));
     }
+  }
+
+  // password reset request
+  static async passwordResetRequest(req: Request, res: Response): Promise<any> {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email: email });
+
+    if (!user) return res.status(404).send(errorResponse("User not found"));
+
+    const resetToken = crypto.randomUUID().toString();
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+    const expires = new Date(Date.now() + 3600 * 1000);
+
+    user.resetToken = hashedToken;
+    user.resetTokenExpires = expires.toString();
+    await user.save();
+
+    const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}&email=${email}`;
+    await sendEmail(
+      email,
+      "Password Reset",
+      `<p>Click here: <a href="${resetLink}">Reset password</a></p>
+      <p>Or follow this link: ${resetLink}</p>
+      `
+    );
+
+    return res
+      .status(200)
+      .send(successResponse("Password reset link sent to your email."));
+  }
+
+  static async passwordReset(req: Request, res: Response): Promise<any> {
+    const { token, email, newPassword } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(404).send(errorResponse("User not found"));
+    if (
+      !user.resetToken ||
+      !user.resetTokenExpires ||
+      new Date(user.resetTokenExpires) < new Date()
+    )
+      return res.status(400).send(errorResponse("Invalid or expired token"));
+
+    const isValidToken = await bcrypt.compare(token, user.resetToken);
+    if (!isValidToken)
+      return res.status(400).send(errorResponse("Token not valid"));
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetToken = null;
+    user.resetTokenExpires = null;
+    await user.save();
+
+    res.status(200).send(successResponse("Password reset successful"));
   }
 }

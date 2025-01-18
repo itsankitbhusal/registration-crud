@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 import "dotenv/config";
 import jwt from "jsonwebtoken";
 
@@ -9,14 +11,6 @@ export const successResponse = (data: unknown) => ({
   success: true,
   data,
 });
-
-// const signRefreshToken = handle => jwt.sign({ handle }, process.env.JWT_SECRET_REFRESH, {
-//   expiresIn: '7d'
-// });
-
-// const signAccessToken = (id, handle, role = 'user', is_verified) => jwt.sign({ id, handle, role, is_verified }, process.env.JWT_SECRET_ACCESS, {
-//   expiresIn: '15min'
-// });
 
 export const signRefreshToken = (email: string) => {
   try {
@@ -43,5 +37,49 @@ export const signAccessToken = (id: string, email: string) => {
     });
   } catch (error) {
     return error;
+  }
+};
+
+export const sendEmail = async (to: string, subject: string, text: string) => {
+  try {
+    const frontendURL = process.env.FRONTEND_URL;
+    const email = process.env.EMAIL;
+    const password = process.env.PASS;
+
+    if (!frontendURL || !email || !password) {
+      throw new Error("Provide email, password and frontend URL");
+    }
+
+    if (!to || !subject || !text) {
+      throw new Error(
+        "Provide email address, subject and text for sending email"
+      );
+    }
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: email,
+        pass: password,
+      },
+    });
+
+    const mailOptions = {
+      from: email,
+      to,
+      subject,
+      html: text,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log(`Email sent to ${to}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error sending email: ${error.message}`);
+    }
+    throw new Error("Failed to send email");
   }
 };
