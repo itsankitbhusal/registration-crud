@@ -1,0 +1,20 @@
+.auth-container {
+    max-width: 400px;
+    margin: 50px auto;
+}
+
+.user-row {
+    cursor: pointer;
+}
+
+.user-row:hover {
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    margin-bottom: 2rem;
+}
+
+.table-responsive {
+    margin-top: 2rem;
+}
