@@ -1,3 +1,3 @@
 const config = {
-    API_URL: 'http://localhost:8888/auth'
+    API_URL: 'https://api.ankitbhusal.com.np/auth'
 };
